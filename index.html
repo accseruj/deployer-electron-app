@@ -1,16 +1,123 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Hello Deployer!</title>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+    <title>Jenkins Deployment Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
 </head>
 <body>
-<h1>Hello Deployer!</h1>
-<p>
-    We are using Node.js <span id="node-version"></span>,
-    Chromium <span id="chrome-version"></span>,
-    and Electron <span id="electron-version"></span>.
-</p>
+<div class="container">
+    <h1>Jenkins Deployment Tool</h1>
+    <form id="deploymentForm">
+        <div class="form-group">
+            <label for="buildNumber">Build Number:</label>
+            <input type="text" id="buildNumber" required>
+        </div>
+        <div class="form-group">
+            <label for="username">Jenkins Username:</label>
+            <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+            <label for="apiToken">Jenkins API Token:</label>
+            <input type="password" id="apiToken" required>
+        </div>
+        <div class="form-group">
+            <label for="namespace">Kubernetes Namespace:</label>
+            <input type="text" id="namespace" value="byredo-m2-dev" required>
+        </div>
+        <div class="form-group">
+            <label for="podName">Pod Name:</label>
+            <input type="text" id="podName" value="magento2-web-65c85c49bf-fxf45" required>
+        </div>
+        <div class="form-group">
+            <label for="sshKeyPath">SSH Key Path:</label>
+            <input type="text" id="sshKeyPath" value="~/.ssh/byredo_rsa" required>
+        </div>
+        <button type="submit">Start Deployment</button>
+    </form>
+    <div id="status"></div>
+</div>
+
+<script>
+    const { ipcRenderer } = require('electron');
+
+    document.getElementById('deploymentForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const data = {
+            buildNumber: document.getElementById('buildNumber').value,
+            username: document.getElementById('username').value,
+            apiToken: document.getElementById('apiToken').value,
+            namespace: document.getElementById('namespace').value,
+            podName: document.getElementById('podName').value,
+            sshKeyPath: document.getElementById('sshKeyPath').value
+        };
+
+        document.getElementById('status').innerHTML = 'Deployment in progress...';
+        document.getElementById('status').className = '';
+
+        ipcRenderer.send('start-deployment', data);
+    });
+
+    ipcRenderer.on('deployment-status', (event, response) => {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerHTML = response.message;
+        statusDiv.className = response.success ? 'success' : 'error';
+    });
+</script>
 </body>
 </html>
