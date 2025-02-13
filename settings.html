@@ -1,0 +1,135 @@
+<!-- settings.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings - Jenkins Deployment Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Settings</h1>
+    <form id="settingsForm">
+        <div class="form-group">
+            <label for="namespace">Kubernetes Namespace:</label>
+            <input type="text" id="namespace" required>
+        </div>
+        <div class="form-group">
+            <label for="jenkinsUsername">Jenkins Username:</label>
+            <input type="text" id="jenkinsUsername" required>
+        </div>
+        <div class="form-group">
+            <label for="jenkinsApiToken">Jenkins API Token:</label>
+            <input type="password" id="jenkinsApiToken" required>
+        </div>
+        <div class="form-group">
+            <label for="sshKeyPath">SSH Key Path:</label>
+            <input type="text" id="sshKeyPath" required>
+        </div>
+        <div class="button-group">
+            <button type="submit">Save Settings</button>
+        </div>
+    </form>
+    <div id="status"></div>
+</div>
+
+<script>
+    const { ipcRenderer } = require('electron');
+
+    // Load current settings
+    async function loadSettings() {
+        const config = await ipcRenderer.invoke('get-config');
+        document.getElementById('namespace').value = config.namespace;
+        document.getElementById('jenkinsUsername').value = config.jenkinsUsername;
+        document.getElementById('jenkinsApiToken').value = config.jenkinsApiToken;
+        document.getElementById('sshKeyPath').value = config.sshKeyPath;
+    }
+
+    loadSettings();
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const newConfig = {
+            namespace: document.getElementById('namespace').value,
+            jenkinsUsername: document.getElementById('jenkinsUsername').value,
+            jenkinsApiToken: document.getElementById('jenkinsApiToken').value,
+            sshKeyPath: document.getElementById('sshKeyPath').value
+        };
+
+        const result = await ipcRenderer.invoke('save-config', newConfig);
+
+        const statusDiv = document.getElementById('status');
+        if (result.success) {
+            statusDiv.innerHTML = 'Settings saved successfully!';
+            statusDiv.className = 'success';
+            setTimeout(() => {
+                window.close();
+            }, 1500);
+        } else {
+            statusDiv.innerHTML = 'Failed to save settings';
+            statusDiv.className = 'error';
+        }
+    });
+</script>
+</body>
+</html>
