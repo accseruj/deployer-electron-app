@@ -1,4 +1,3 @@
-<!-- settings.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -25,7 +24,7 @@
             margin-bottom: 5px;
             font-weight: bold;
         }
-        input {
+        input, select {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -63,12 +62,38 @@
             background-color: #f2dede;
             color: #a94442;
         }
+        .env-selector {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .env-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .env-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>Settings</h1>
+    <div class="env-selector">
+        <label for="environmentSelect">Configure Environment:</label>
+        <select id="environmentSelect" onchange="loadEnvironmentConfig()">
+            <!-- Options will be populated dynamically -->
+        </select>
+    </div>
     <form id="settingsForm">
+        <div class="env-header">
+            <div class="env-title" id="currentEnvTitle">Environment Settings</div>
+        </div>
         <div class="form-group">
             <label for="namespace">Kubernetes Namespace:</label>
             <input type="text" id="namespace" required>
@@ -89,9 +114,21 @@
             <label for="jenkinsJobUrl">Jenkins Job URL:</label>
             <input type="text" id="jenkinsJobUrl" required>
         </div>
+        <div class="form-group">
+            <label for="sshUser">SSH User:</label>
+            <input type="text" id="sshUser" required>
+        </div>
+        <div class="form-group">
+            <label for="sshHost">SSH Host:</label>
+            <input type="text" id="sshHost" required>
+        </div>
+        <div class="form-group">
+            <label for="sshPort">SSH Port:</label>
+            <input type="text" id="sshPort" required>
+        </div>
         <div class="button-group">
             <button type="submit">Save Settings</button>
-            <button id="cancelButton">Cancel</button>
+            <button type="button" id="cancelButton">Cancel</button>
         </div>
     </form>
     <div id="status"></div>
@@ -100,40 +137,74 @@
 <script>
     const { ipcRenderer } = require('electron');
 
-    // Load current settings
-    async function loadSettings() {
-        const config = await ipcRenderer.invoke('get-config');
-        document.getElementById('namespace').value = config.namespace;
-        document.getElementById('jenkinsUsername').value = config.jenkinsUsername;
-        document.getElementById('jenkinsApiToken').value = config.jenkinsApiToken;
-        document.getElementById('sshKeyPath').value = config.sshKeyPath;
-        document.getElementById('jenkinsJobUrl').value = config.jenkinsJobUrl;
+    let currentEnvironment = '';
+
+    async function loadEnvironments() {
+        const { currentEnv, environments } = await ipcRenderer.invoke('get-environments');
+        const select = document.getElementById('environmentSelect');
+        select.innerHTML = environments.map(env =>
+                                                `<option value="${env}" ${env === currentEnv ? 'selected' : ''}>${env.toUpperCase()}</option>`
+        ).join('');
+        currentEnvironment = select.value;
+        await loadEnvironmentConfig();
     }
 
-    loadSettings();
+    async function loadEnvironmentConfig() {
+        const select = document.getElementById('environmentSelect');
+        const envName = select.value;
+        document.getElementById('currentEnvTitle').textContent = `${envName.toUpperCase()} Environment Settings`;
+        currentEnvironment = envName;
+
+        try {
+            const config = await ipcRenderer.invoke('get-env-config', envName);
+
+            // Update form fields with the configuration
+            document.getElementById('namespace').value = config.namespace || '';
+            document.getElementById('jenkinsUsername').value = config.jenkinsUsername || '';
+            document.getElementById('jenkinsApiToken').value = config.jenkinsApiToken || '';
+            document.getElementById('sshKeyPath').value = config.sshKeyPath || '';
+            document.getElementById('jenkinsJobUrl').value = config.jenkinsJobUrl || '';
+            document.getElementById('sshUser').value = config.sshUser || '';
+            document.getElementById('sshHost').value = config.sshHost || '';
+            document.getElementById('sshPort').value = config.sshPort || '12022';
+        } catch (error) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `Error loading configuration: ${error.message}`;
+            statusDiv.className = 'error';
+        }
+    }
 
     document.getElementById('settingsForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const newConfig = {
+        const envConfig = {
             namespace: document.getElementById('namespace').value,
             jenkinsUsername: document.getElementById('jenkinsUsername').value,
             jenkinsApiToken: document.getElementById('jenkinsApiToken').value,
             sshKeyPath: document.getElementById('sshKeyPath').value,
-            jenkinsJobUrl: document.getElementById('jenkinsJobUrl').value
+            jenkinsJobUrl: document.getElementById('jenkinsJobUrl').value,
+            sshUser: document.getElementById('sshUser').value,
+            sshHost: document.getElementById('sshHost').value,
+            sshPort: document.getElementById('sshPort').value
         };
 
-        const result = await ipcRenderer.invoke('save-config', newConfig);
+        try {
+            const result = await ipcRenderer.invoke('save-env-config', {
+                envName: currentEnvironment,
+                envConfig
+            });
 
-        const statusDiv = document.getElementById('status');
-        if (result.success) {
-            statusDiv.innerHTML = 'Settings saved successfully!';
-            statusDiv.className = 'success';
-            setTimeout(() => {
-                window.close();
-            }, 1500);
-        } else {
-            statusDiv.innerHTML = 'Failed to save settings';
+            const statusDiv = document.getElementById('status');
+            if (result.success) {
+                statusDiv.innerHTML = `Settings saved successfully for ${currentEnvironment.toUpperCase()} environment!`;
+                statusDiv.className = 'success';
+                setTimeout(() => {
+                    window.close();
+                }, 1500);
+            }
+        } catch (error) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `Failed to save settings: ${error.message}`;
             statusDiv.className = 'error';
         }
     });
@@ -141,6 +212,9 @@
     document.getElementById('cancelButton').addEventListener('click', () => {
         window.close();
     });
+
+    // Load environments when the page loads
+    loadEnvironments();
 </script>
 </body>
 </html>

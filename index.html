@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -25,7 +24,7 @@
             margin-bottom: 5px;
             font-weight: bold;
         }
-        input {
+        input, select {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -80,6 +79,17 @@
         .settings-button:hover {
             background-color: #5a6268;
         }
+        .env-selector {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .current-env {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -87,6 +97,13 @@
     <div class="header">
         <h1>Jenkins Deployment</h1>
         <button class="settings-button" onclick="openSettings()">⚙️ Settings</button>
+    </div>
+    <div class="env-selector">
+        <label for="environment">Environment:</label>
+        <select id="environment" onchange="changeEnvironment()">
+            <!-- Options will be populated dynamically -->
+        </select>
+        <div class="current-env" id="currentEnv"></div>
     </div>
     <form id="deploymentForm">
         <div class="form-group">
@@ -101,11 +118,31 @@
 <script>
     const { ipcRenderer } = require('electron');
 
+    async function loadEnvironments() {
+        const { currentEnv, environments } = await ipcRenderer.invoke('get-environments');
+        const select = document.getElementById('environment');
+        select.innerHTML = environments.map(env =>
+                                                `<option value="${env}" ${env === currentEnv ? 'selected' : ''}>${env.toUpperCase()}</option>`
+        ).join('');
+        updateCurrentEnv(currentEnv);
+    }
+
+    function updateCurrentEnv(env) {
+        document.getElementById('currentEnv').textContent = `Current Environment: ${env.toUpperCase()}`;
+    }
+
+    async function changeEnvironment() {
+        const select = document.getElementById('environment');
+        const newEnv = select.value;
+        await ipcRenderer.invoke('set-current-env', newEnv);
+        updateCurrentEnv(newEnv);
+    }
+
     function openSettings() {
         ipcRenderer.send('open-settings');
     }
 
-    document.getElementById('deploymentForm').addEventListener('submit', (e) => {
+    document.getElementById('deploymentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const submitButton = document.getElementById('submitButton');
@@ -136,6 +173,9 @@
             submitButton.disabled = false;
         }
     });
+
+    // Load environments when the page loads
+    loadEnvironments();
 </script>
 </body>
 </html>
