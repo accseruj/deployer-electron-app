@@ -2,7 +2,7 @@
   "name": "deployer-electron-app",
   "version": "1.0.0",
   "description": "Deployer electron app",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",

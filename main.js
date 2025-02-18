@@ -9,7 +9,8 @@ const DEFAULT_CONFIG = {
     namespace: 'byredo-m2-dev',
     jenkinsUsername: '',
     jenkinsApiToken: '',
-    sshKeyPath: '~/.ssh/byredo_rsa'
+    sshKeyPath: '~/.ssh/byredo_rsa',
+    jenkinsJobUrl: 'https://ci.vaimo.network/job/project/job/byredo/job/project_byredo-retainer-artefact/job/uat/'
 };
 
 let mainWindow;
@@ -152,17 +153,19 @@ ipcMain.on('start-deployment', async (event, data) => {
 
         await executeCommand(`kubectl cp ${config.sshKeyPath} ${config.namespace}/${podName}:/tmp`);
 
+        let sshKey = config.sshKeyPath.replace(/^.*[\\\/]/, '');
         const commands = [
             `cd /tmp`,
-            `curl -L https://ci.vaimo.network/job/project/job/byredo/job/project_byredo-retainer-artefact/job/uat/${buildNumber}/artifact/htdocs.tar.gz --user ${config.jenkinsUsername}:${config.jenkinsApiToken} --output vaimo_byredo_${buildNumber}.tar.gz`,
-            `scp -i byredo_rsa -P 12022 vaimo_byredo_${buildNumber}.tar.gz serge-test@manager.byredo.akoova.cloud:/trigger/`,
-            `ssh -i byredo_rsa serge-test@manager.byredo.akoova.cloud -p 12022 "touch /trigger/deploy-vaimo_byredo_${buildNumber}.tar.gz"`,
-            `rm byredo_rsa`,
+            `curl -L ${config.jenkinsJobUrl}${buildNumber}/artifact/htdocs.tar.gz --user ${config.jenkinsUsername}:${config.jenkinsApiToken} --output vaimo_byredo_${buildNumber}.tar.gz`,
+            `scp -i ${sshKey} -P 12022 vaimo_byredo_${buildNumber}.tar.gz byredo-uat@manager.byredo.akoova.cloud:/trigger/`,
+            `ssh -i ${sshKey} byredo-uat@manager.byredo.akoova.cloud -p 12022 "touch /trigger/deploy-vaimo_byredo_${buildNumber}.tar.gz"`,
+            `rm ${sshKey}`,
             `rm vaimo_byredo_${buildNumber}.tar.gz`
         ];
 
         for (const command of commands) {
             await executeCommand(`kubectl exec -it ${podName} -n ${config.namespace} -- sh -c "${command}"`);
+            console.log(`Executed command: ${command}`);
         }
 
         event.reply('deployment-status', {
