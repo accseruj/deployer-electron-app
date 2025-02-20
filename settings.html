@@ -79,6 +79,42 @@
             font-weight: bold;
             color: #4CAF50;
         }
+        .section-divider {
+            margin: 30px 0 20px;
+            border-top: 1px solid #ddd;
+            position: relative;
+        }
+        .section-title {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: white;
+            padding: 0 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .checkbox-container input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+        .checkbox-container label {
+            margin-bottom: 0;
+        }
+        .slack-settings {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4a154b;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -126,6 +162,31 @@
             <label for="sshPort">SSH Port:</label>
             <input type="text" id="sshPort" required>
         </div>
+
+        <div class="section-divider">
+            <div class="section-title">Notifications</div>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="enableSlack" onchange="toggleSlackSettings()">
+            <label for="enableSlack">Enable Slack Notifications</label>
+        </div>
+
+        <div id="slackSettings" class="slack-settings hidden">
+            <div class="form-group">
+                <label for="slackWebhookUrl">Slack Webhook URL:</label>
+                <input type="text" id="slackWebhookUrl" placeholder="https://hooks.slack.com/services/...">
+            </div>
+            <div class="form-group">
+                <label for="slackChannel">Slack Channel:</label>
+                <input type="text" id="slackChannel" placeholder="#deployments">
+            </div>
+            <div class="form-group">
+                <label for="slackUsername">Bot Username (optional):</label>
+                <input type="text" id="slackUsername" placeholder="Deployment Bot">
+            </div>
+        </div>
+
         <div class="button-group">
             <button type="submit">Save Settings</button>
             <button type="button" id="cancelButton">Cancel</button>
@@ -167,10 +228,30 @@
             document.getElementById('sshUser').value = config.sshUser || '';
             document.getElementById('sshHost').value = config.sshHost || '';
             document.getElementById('sshPort').value = config.sshPort || '12022';
+
+            // Set Slack settings
+            document.getElementById('enableSlack').checked = config.enableSlack || false;
+            document.getElementById('slackWebhookUrl').value = config.slackWebhookUrl || '';
+            document.getElementById('slackChannel').value = config.slackChannel || '';
+            document.getElementById('slackUsername').value = config.slackUsername || '';
+
+            // Toggle visibility of Slack settings
+            toggleSlackSettings();
         } catch (error) {
             const statusDiv = document.getElementById('status');
             statusDiv.innerHTML = `Error loading configuration: ${error.message}`;
             statusDiv.className = 'error';
+        }
+    }
+
+    function toggleSlackSettings() {
+        const enableSlack = document.getElementById('enableSlack').checked;
+        const slackSettings = document.getElementById('slackSettings');
+
+        if (enableSlack) {
+            slackSettings.classList.remove('hidden');
+        } else {
+            slackSettings.classList.add('hidden');
         }
     }
 
@@ -185,7 +266,12 @@
             jenkinsJobUrl: document.getElementById('jenkinsJobUrl').value,
             sshUser: document.getElementById('sshUser').value,
             sshHost: document.getElementById('sshHost').value,
-            sshPort: document.getElementById('sshPort').value
+            sshPort: document.getElementById('sshPort').value,
+            // Slack settings
+            enableSlack: document.getElementById('enableSlack').checked,
+            slackWebhookUrl: document.getElementById('slackWebhookUrl').value,
+            slackChannel: document.getElementById('slackChannel').value,
+            slackUsername: document.getElementById('slackUsername').value
         };
 
         try {
@@ -199,7 +285,7 @@
                 statusDiv.innerHTML = `Settings saved successfully for ${currentEnvironment.toUpperCase()} environment!`;
                 statusDiv.className = 'success';
                 setTimeout(() => {
-                    window.close();
+                    ipcRenderer.send('close-settings');
                 }, 1500);
             }
         } catch (error) {
@@ -210,7 +296,7 @@
     });
 
     document.getElementById('cancelButton').addEventListener('click', () => {
-        window.close();
+        ipcRenderer.send('close-settings');
     });
 
     // Load environments when the page loads
