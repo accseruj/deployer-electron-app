@@ -66,12 +66,11 @@ class DeploymentService {
 
             let sshKey = currentEnvConfig.sshKeyPath.replace(/^.*[\\\/]/, '');
             const commands = [
-                `cd /tmp`,
-                `curl -L ${currentEnvConfig.jenkinsJobUrl}${buildNumber}/artifact/htdocs.tar.gz --user ${currentEnvConfig.jenkinsUsername}:${currentEnvConfig.jenkinsApiToken} --output vaimo_byredo_${buildNumber}.tar.gz`,
-                `scp -i ${sshKey} -P ${currentEnvConfig.sshPort} vaimo_byredo_${buildNumber}.tar.gz ${currentEnvConfig.sshUser}@${currentEnvConfig.sshHost}:/trigger/`,
-                `ssh -i ${sshKey} ${currentEnvConfig.sshUser}@${currentEnvConfig.sshHost} -p ${currentEnvConfig.sshPort} "touch /trigger/deploy-vaimo_byredo_${buildNumber}.tar.gz"`,
-                `rm ${sshKey}`,
-                `rm vaimo_byredo_${buildNumber}.tar.gz`
+                `cd /tmp && curl -L ${currentEnvConfig.jenkinsJobUrl}${buildNumber}/artifact/htdocs.tar.gz --user ${currentEnvConfig.jenkinsUsername}:${currentEnvConfig.jenkinsApiToken} --output vaimo_byredo_${buildNumber}.tar.gz`,
+                `cd /tmp && scp -i ${sshKey} -P ${currentEnvConfig.sshPort} -o StrictHostKeyChecking=no vaimo_byredo_${buildNumber}.tar.gz ${currentEnvConfig.sshUser}@${currentEnvConfig.sshHost}:/trigger/`,
+                `ssh -i /tmp/${sshKey} ${currentEnvConfig.sshUser}@${currentEnvConfig.sshHost} -o StrictHostKeyChecking=no -p ${currentEnvConfig.sshPort} 'touch /trigger/deploy-vaimo_byredo_${buildNumber}.tar.gz'`,
+                `cd /tmp && rm ${sshKey}`,
+                `cd /tmp && rm vaimo_byredo_${buildNumber}.tar.gz`
             ];
 
             for (const command of commands) {
