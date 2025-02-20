@@ -35,6 +35,11 @@ class ConfigManager {
                     ...this.DEFAULT_ENV_CONFIG,
                     jenkinsJobUrl: 'https://ci.vaimo.network/job/project/job/byredo/job/project_byredo-retainer-artefact/job/upgrade/',
                     sshUser: 'byredo-upgrade',
+                },
+                uatheadless: {
+                    ...this.DEFAULT_ENV_CONFIG,
+                    jenkinsJobUrl: 'https://ci.vaimo.network/job/project/job/byredo/job/project_byredo-retainer-artefact/job/headless%252Fmain/',
+                    sshUser: 'byredo-uatheadless',
                 }
             }
         };
