@@ -108,6 +108,83 @@ class DeploymentService {
             return { success: false, error: error.message };
         }
     }
+
+    // Add inside the DeploymentService class
+    async getLatestBuildNumber() {
+        try {
+            const config = configManager.getStore().get('config');
+            const currentEnvConfig = config.environments[config.currentEnv];
+
+            // Extract job name from the Jenkins job URL
+            const jobUrlParts = currentEnvConfig.jenkinsJobUrl.split('/');
+            const jobIndex = jobUrlParts.findIndex(part => part === 'job');
+            const jobName = jobUrlParts[jobIndex + 1];
+
+            // Construct the API URL to get the latest build info
+            const apiUrl = `${currentEnvConfig.jenkinsJobUrl}/lastSuccessfulBuild/api/json`;
+
+            // Use curl with appropriate options for authentication and handling redirects
+            const curlCommand = `curl -s -L -u "${currentEnvConfig.jenkinsUsername}:${currentEnvConfig.jenkinsApiToken}" "${apiUrl}"`;
+            console.log(`Executing: ${curlCommand.replace(currentEnvConfig.jenkinsApiToken, '****')}`);
+
+            const output = await commandExecutor.execute(curlCommand);
+
+            // Check if response starts with HTML doctype, which indicates an error
+            if (output.trim().startsWith('<!DOCTYPE') || output.trim().startsWith('<html')) {
+                throw new Error('Received HTML instead of JSON. Authentication may have failed.');
+            }
+
+            try {
+                const buildInfo = JSON.parse(output);
+                return buildInfo.number.toString();
+            } catch (jsonError) {
+                console.error('Failed to parse Jenkins response:', output.substring(0, 200) + '...');
+                throw new Error('Received invalid JSON from Jenkins API');
+            }
+        } catch (error) {
+            console.error('Error fetching latest build from Jenkins:', error);
+            throw new Error(`Failed to get latest build: ${error.message}`);
+        }
+    }
+
+    async testJenkinsConnection() {
+        try {
+            const config = configManager.getStore().get('config');
+            const currentEnvConfig = config.environments[config.currentEnv];
+
+            // Use a simple Jenkins API endpoint that requires minimal permissions
+            const jenkinsBaseUrl = currentEnvConfig.jenkinsJobUrl.split('/job/')[0];
+            const testUrl = `${jenkinsBaseUrl}/api/json?pretty=true`;
+
+            // Execute curl command with verbose output to see what's happening
+            const curlCommand = `curl -v -s -L -u "${currentEnvConfig.jenkinsUsername}:${currentEnvConfig.jenkinsApiToken}" "${testUrl}"`;
+            console.log(`Testing Jenkins connection: ${curlCommand.replace(currentEnvConfig.jenkinsApiToken, '****')}`);
+
+            const output = await commandExecutor.execute(curlCommand);
+
+            // Log the first part of the response for debugging
+            console.log("Jenkins API response (first 200 chars):", output.substring(0, 200));
+
+            try {
+                JSON.parse(output);
+                return {
+                    success: true,
+                    message: "Successfully connected to Jenkins API"
+                };
+            } catch (jsonError) {
+                return {
+                    success: false,
+                    message: "Connected to Jenkins but received invalid JSON response",
+                    response: output.substring(0, 500)
+                };
+            }
+        } catch (error) {
+            return {
+                success: false,
+                message: `Connection test failed: ${error.message}`
+            };
+        }
+    }
 }
 
 module.exports = new DeploymentService();

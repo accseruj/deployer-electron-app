@@ -189,8 +189,10 @@
 
         <div class="button-group">
             <button type="submit">Save Settings</button>
+            <button type="button" id="testJenkinsButton" class="secondary-button">Test Jenkins Connection</button>
             <button type="button" id="cancelButton">Cancel</button>
         </div>
+        <div id="jenkinsTestResult" class="info" style="display: none;"></div>
     </form>
     <div id="status"></div>
 </div>
@@ -297,6 +299,27 @@
 
     document.getElementById('cancelButton').addEventListener('click', () => {
         ipcRenderer.send('close-settings');
+    });
+
+    document.getElementById('testJenkinsButton').addEventListener('click', async () => {
+        const resultDiv = document.getElementById('jenkinsTestResult');
+        resultDiv.textContent = 'Testing Jenkins connection...';
+        resultDiv.className = 'info';
+        resultDiv.style.display = 'block';
+
+        try {
+            const result = await ipcRenderer.invoke('test-jenkins-connection');
+            if (result.success) {
+                resultDiv.textContent = result.message;
+                resultDiv.className = 'success';
+            } else {
+                resultDiv.textContent = `${result.message}\n\nResponse preview: ${result.response || 'N/A'}`;
+                resultDiv.className = 'error';
+            }
+        } catch (error) {
+            resultDiv.textContent = `Test failed: ${error}`;
+            resultDiv.className = 'error';
+        }
     });
 
     // Load environments when the page loads

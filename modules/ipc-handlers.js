@@ -65,6 +65,19 @@ function setupIpcHandlers(ipcMain, services) {
             (status) => event.reply('deployment-status', status)
         );
     });
+
+    ipcMain.handle('get-latest-build', async () => {
+        try {
+            return await DeploymentService.getLatestBuildNumber();
+        } catch (error) {
+            console.error('Error getting latest build:', error);
+            throw error.message;
+        }
+    });
+
+    ipcMain.handle('test-jenkins-connection', async () => {
+        return await DeploymentService.testJenkinsConnection();
+    });
 }
 
 module.exports = setupIpcHandlers;

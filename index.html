@@ -90,6 +90,22 @@
             color: #4CAF50;
             margin-top: 5px;
         }
+        .secondary-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .secondary-button:hover {
+            background-color: #0069d9;
+        }
+        .secondary-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -111,6 +127,7 @@
             <input type="text" id="buildNumber" required>
         </div>
         <button type="submit" id="submitButton">Start Deployment</button>
+        <button type="button" id="getLatestBuildButton" class="secondary-button">Get Latest Build</button>
     </form>
     <div id="status"></div>
 </div>
@@ -157,6 +174,27 @@
         statusDiv.className = 'info';
 
         ipcRenderer.send('start-deployment', data);
+    });
+
+    document.getElementById('getLatestBuildButton').addEventListener('click', async () => {
+        const statusDiv = document.getElementById('status');
+        const getLatestBuildButton = document.getElementById('getLatestBuildButton');
+
+        statusDiv.innerHTML = 'Fetching latest build number from Jenkins...';
+        statusDiv.className = 'info';
+        getLatestBuildButton.disabled = true;
+
+        try {
+            const latestBuild = await ipcRenderer.invoke('get-latest-build');
+            document.getElementById('buildNumber').value = latestBuild;
+            statusDiv.innerHTML = `Successfully retrieved latest build number: ${latestBuild}`;
+            statusDiv.className = 'success';
+        } catch (error) {
+            statusDiv.innerHTML = `Failed to fetch latest build: ${error}`;
+            statusDiv.className = 'error';
+        } finally {
+            getLatestBuildButton.disabled = false;
+        }
     });
 
     ipcRenderer.on('deployment-status', (event, response) => {
