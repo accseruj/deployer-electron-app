@@ -13,7 +13,7 @@ class WindowManager {
     createMainWindow() {
         this.mainWindow = new BrowserWindow({
                                                 width: 600,
-                                                height: 500,
+                                                height: 600,
                                                 webPreferences: {
                                                     nodeIntegration: true,
                                                     contextIsolation: false

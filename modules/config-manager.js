@@ -41,6 +41,25 @@ class ConfigManager {
                     jenkinsJobUrl: 'https://ci.vaimo.network/job/project/job/byredo/job/project_byredo-retainer-artefact/job/headless%252Fmain/',
                     sshUser: 'byredo-uatheadless',
                 }
+            },
+            jiraConfig: {
+                url: 'https://your-jira-instance.atlassian.net',
+                username: 'your-jira-username',
+                apiToken: 'your-jira-api-token',
+                project: 'PROJECT',
+                boardId: '123',
+                columnName: 'Ready for UAT',
+            },
+            gitConfig: {
+                bitbucketUrl: 'https://api.bitbucket.org/2.0',
+                username: 'your-bitbucket-username',
+                apiToken: 'your-bitbucket-api-token',
+                repository: 'owner/repo',
+                targetBranch: 'develop'
+            },
+            deploymentConfig: {
+                waitForJenkinsBuild: true,
+                autoDeploySuccessfulBuild: true
             }
         };
 

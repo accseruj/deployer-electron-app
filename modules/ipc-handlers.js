@@ -9,6 +9,7 @@ function setupIpcHandlers(ipcMain, services) {
         WindowManager,
         DeploymentService
     } = services;
+    const DeploymentOrchestrator = require('./deployment-orchestrator');
 
     // Window management
     ipcMain.on('open-settings', () => {
@@ -77,6 +78,18 @@ function setupIpcHandlers(ipcMain, services) {
 
     ipcMain.handle('test-jenkins-connection', async () => {
         return await DeploymentService.testJenkinsConnection();
+    });
+
+    ipcMain.on('start-smart-deployment', async (event, data) => {
+        // Update config based on checkbox state
+        const config = ConfigManager.getStore().get('config');
+        config.deploymentConfig.autoDeploySuccessfulBuild = data.autoDeployBuild;
+        ConfigManager.getStore().set('config', config);
+
+        // Start the orchestrated deployment
+        await DeploymentOrchestrator.orchestrateDeployment(
+            (status) => event.reply('smart-deployment-status', status)
+        );
     });
 }
 

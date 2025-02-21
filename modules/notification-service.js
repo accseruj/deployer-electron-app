@@ -231,6 +231,60 @@ class NotificationService {
             return { success: false, error: error.message };
         }
     }
+
+    async sendTicketsToBeDeployedNotification(tickets) {
+        const config = configManager.getStore().get('config');
+        const currentEnvConfig = config.environments[config.currentEnv];
+
+        if (!currentEnvConfig.enableSlack) return;
+
+        const ticketList = tickets.map(ticket =>
+                                           `• <${this.config.jiraUrl}/browse/${ticket.key}|${ticket.key}> - ${ticket.fields.summary}`
+        ).join('\n');
+
+        const message = {
+            text: `*Tickets to be deployed to ${config.currentEnv}*\n${ticketList}`,
+            channel: currentEnvConfig.slackChannel,
+            username: 'Deployment Bot',
+            icon_emoji: ':rocket:'
+        };
+
+        await this.sendSlackMessage(message);
+    }
+
+    async sendPrStatusNotification(ticketKey, prResult) {
+        const config = configManager.getStore().get('config');
+        const currentEnvConfig = config.environments[config.currentEnv];
+
+        if (!currentEnvConfig.enableSlack) return;
+
+        let color, title, text;
+
+        if (prResult.hasConflicts) {
+            color = 'danger';
+            title = `⚠️ Merge Conflicts: ${ticketKey}`;
+            text = `Pull request has conflicts and cannot be automatically merged. Please resolve conflicts manually: ${prResult.url}`;
+        } else {
+            color = 'good';
+            title = `✅ Successfully Merged: ${ticketKey}`;
+            text = `Pull request was successfully merged into ${config.gitConfig.targetBranch}`;
+        }
+
+        const message = {
+            attachments: [{
+                color: color,
+                title: title,
+                title_link: prResult.url,
+                text: text,
+                footer: `Target branch: ${config.gitConfig.targetBranch}`
+            }],
+            channel: currentEnvConfig.slackChannel,
+            username: 'Deployment Bot',
+            icon_emoji: ':git:'
+        };
+
+        await this.sendSlackMessage(message);
+    }
 }
 
 module.exports = new NotificationService();

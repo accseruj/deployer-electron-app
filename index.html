@@ -106,6 +106,19 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            margin-top: 15px;
+        }
+        .checkbox-container input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+        .checkbox-container label {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
@@ -126,8 +139,17 @@
             <label for="buildNumber">Build Number:</label>
             <input type="text" id="buildNumber" required>
         </div>
+        <div class="form-group">
         <button type="submit" id="submitButton">Start Deployment</button>
         <button type="button" id="getLatestBuildButton" class="secondary-button">Get Latest Build</button>
+            </div>
+        <div class="form-group">
+            <button type="button" id="smartDeployButton" class="primary-button">Smart Deploy from Jira</button>
+            <div class="checkbox-container">
+                <input type="checkbox" id="autoDeployBuild" checked>
+                <label for="autoDeployBuild">Automatically deploy successful build</label>
+            </div>
+        </div>
     </form>
     <div id="status"></div>
 </div>
@@ -208,6 +230,46 @@
             submitButton.disabled = true;
         } else {
             statusDiv.className = response.success ? 'success' : 'error';
+            submitButton.disabled = false;
+        }
+    });
+
+    document.getElementById('smartDeployButton').addEventListener('click', async () => {
+        const statusDiv = document.getElementById('status');
+        const smartDeployButton = document.getElementById('smartDeployButton');
+        const submitButton = document.getElementById('submitButton');
+
+        statusDiv.innerHTML = 'Starting Smart Deployment process...';
+        statusDiv.className = 'info';
+        smartDeployButton.disabled = true;
+        submitButton.disabled = true;
+
+        ipcRenderer.send('start-smart-deployment', {
+            autoDeployBuild: document.getElementById('autoDeployBuild').checked
+        });
+    });
+
+    ipcRenderer.on('smart-deployment-status', (event, response) => {
+        const statusDiv = document.getElementById('status');
+        const smartDeployButton = document.getElementById('smartDeployButton');
+        const submitButton = document.getElementById('submitButton');
+
+        statusDiv.innerHTML = response.message;
+
+        if (response.details) {
+            const detailsHtml = response.details.map(item =>
+                                                         `<p>${item.ticket}: ${item.success ? '✅' : '❌'} ${item.message}</p>`
+            ).join('');
+            statusDiv.innerHTML += `<hr>${detailsHtml}`;
+        }
+
+        if (response.inProgress) {
+            statusDiv.className = 'info';
+            smartDeployButton.disabled = true;
+            submitButton.disabled = true;
+        } else {
+            statusDiv.className = response.success ? 'success' : 'error';
+            smartDeployButton.disabled = false;
             submitButton.disabled = false;
         }
     });
